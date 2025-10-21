@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"ecom/config"
 	"ecom/database"
 	"ecom/utils"
 	"encoding/json"
@@ -27,7 +28,23 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	user := database.Find(reqLogin.Email, reqLogin.Password)
 	if user == nil {
 		http.Error(w, "Invalid credential", http.StatusBadRequest)
+		return
 	}
-	utils.SendData(w, user, http.StatusCreated)
+
+	cnf := config.GetConfig()
+	accessToken, err := utils.CreateJwt(cnf.JwtSecret, utils.Payload{
+		Sub:         1,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Email:       user.Email,
+		IsShopOwner: user.IsShopOwner,
+	})
+
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendData(w, accessToken, http.StatusCreated)
 
 }
