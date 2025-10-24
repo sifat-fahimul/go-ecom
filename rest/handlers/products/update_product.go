@@ -1,31 +1,51 @@
 package products
 
 import (
-	"ecom/database"
+	"ecom/repo"
+	"ecom/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 )
 
+type ReqUpdateProduct struct {
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	ImgUrl      string  `json:"imageUrl"`
+}
+
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	pId, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, "Please give me a valid product id", 400)
+		utils.SendError(w, http.StatusBadRequest, "Please give me a valid product id")
 		return
 	}
 
-	var newProduct database.Product
+	var req ReqUpdateProduct
 	decoder := json.NewDecoder(r.Body)
-	err = decoder.Decode(&newProduct)
+	err = decoder.Decode(&req)
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, "Please give me valid json", 400)
+		utils.SendError(w, http.StatusBadRequest, "Please give me valid json")
 		return
 	}
-	newProduct.ID = pId
-	database.Update(newProduct)
+
+	product, err := h.productRepo.Update(repo.Product{
+		ID:          pId,
+		Title:       req.Title,
+		Description: req.Description,
+		Price:       req.Price,
+		ImgUrl:      req.ImgUrl,
+	})
+	if err != nil {
+		utils.SendError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	utils.SendData(w, http.StatusOK, product)
 
 }

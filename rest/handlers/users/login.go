@@ -1,8 +1,6 @@
 package users
 
 import (
-	"ecom/config"
-	"ecom/database"
 	"ecom/utils"
 	"encoding/json"
 	"fmt"
@@ -21,18 +19,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&reqLogin)
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, "Please give me valid json", http.StatusBadRequest)
+		utils.SendError(w, http.StatusBadRequest, "Please give me valid json")
 		return
 	}
 
-	user := database.Find(reqLogin.Email, reqLogin.Password)
-	if user == nil {
-		http.Error(w, "Invalid credential", http.StatusBadRequest)
+	user, err := h.userRepo.Find(reqLogin.Email, reqLogin.Password)
+	if err != nil {
+		utils.SendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	cnf := config.GetConfig()
-	accessToken, err := utils.CreateJwt(cnf.JwtSecret, utils.Payload{
+	accessToken, err := utils.CreateJwt(h.cnf.JwtSecret, utils.Payload{
 		Sub:         1,
 		FirstName:   user.FirstName,
 		LastName:    user.LastName,
@@ -41,10 +38,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		utils.SendError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
-	utils.SendData(w, accessToken, http.StatusCreated)
+	utils.SendData(w, http.StatusCreated, accessToken)
 
 }
