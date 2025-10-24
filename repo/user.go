@@ -18,31 +18,30 @@ type UserRepo interface {
 }
 
 type userRepo struct {
-	userList []User
+	userList []*User
 }
 
 func NewUserRepo() UserRepo {
 	return &userRepo{}
 }
 
-func (r userRepo) Create(user User) (*User, error) {
+func (r *userRepo) Create(user User) (*User, error) {
 	if user.ID != 0 {
 		return &user, nil
 	}
 	user.ID = len(r.userList) + 1
-	r.userList = append(r.userList, user)
+	r.userList = append(r.userList, &user)
 	return &user, nil
 }
-func (r userRepo) Find(email, password string) (*User, error) {
-	for _, u := range r.userList {
-		if u.Email == email && u.Password == password {
-			return &u, nil
+func (r *userRepo) Find(email, password string) (*User, error) {
+	for _, user := range r.userList {
+		if user.Email == email && user.Password == password {
+			return user, nil
 		}
 	}
 	return nil, nil
 
 }
 
-// func (r userRepo) List() ([]*User, error)
 // func (r userRepo) Delete(id int) error
 // func (r userRepo) Update(p User) (*User, error)
