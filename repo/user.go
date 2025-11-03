@@ -2,18 +2,20 @@ package repo
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 )
 
 type User struct {
-	ID          int    `json:"id" db:"id"`
-	FirstName   string `json:"firstName" db:"firstName"`
-	LastName    string `json:"lastName" db:"lastName"`
-	Email       string `json:"email" db:"email"`
-	Password    string `json:"password" db:"password"`
-	IsShopOwner bool   `json:"isShopOwner" db:"isShopOwner"`
+	ID          int       `json:"id" db:"id"`
+	FirstName   string    `json:"firstName" db:"first_name"`
+	LastName    string    `json:"lastName" db:"last_name"`
+	Email       string    `json:"email" db:"email"`
+	Password    string    `json:"password" db:"password"`
+	IsShopOwner bool      `json:"isShopOwner" db:"is_shop_owner"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 type UserRepo interface {
@@ -36,7 +38,7 @@ func NewUserRepo(db *sqlx.DB) UserRepo {
 
 func (r *userRepo) Create(user User) (*User, error) {
 
-	query := `INSERT INTO users (firstName, lastName, email, password, isShopOwner) VALUES (:firstName, :lastName, :email, :password, :isShopOwner) RETURNING id`
+	query := `INSERT INTO users (first_name, last_name, email, password, is_shop_owner) VALUES (:first_name, :last_name, :email, :password, :is_shop_owner) RETURNING id`
 
 	row, err := r.db.NamedQuery(query, &user)
 	if err != nil {

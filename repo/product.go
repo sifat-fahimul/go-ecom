@@ -1,11 +1,20 @@
 package repo
 
+import (
+	"fmt"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+)
+
 type Product struct {
-	ID          int     `json:"id"`
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	ImgUrl      string  `json:"imageUrl"`
+	ID          int       `json:"id" db:"id"`
+	Title       string    `json:"title" db:"title"`
+	Description string    `json:"description" db:"description"`
+	Price       float64   `json:"price" db:"price"`
+	ImgUrl      string    `json:"imageUrl" db:"image_url"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 type ProductRepo interface {
@@ -17,62 +26,59 @@ type ProductRepo interface {
 }
 
 type productRepo struct {
-	productList []*Product
+	db *sqlx.DB
 }
 
-func NewProductRepo() ProductRepo {
-	repo := &productRepo{}
+func NewProductRepo(db *sqlx.DB) ProductRepo {
+	return &productRepo{
+		db: db,
+	}
 
-	generateInitialProducts(repo)
-	return repo
 }
 
 func (r *productRepo) Create(p Product) (*Product, error) {
-	p.ID = len(r.productList) + 1
-	r.productList = append(r.productList, &p)
+	query := `INSERT INTO products (title, description, price, image_url) VALUES (:title, :description, :price, :image_url) RETURNING id`
+	row, err := r.db.NamedQuery(query, &p)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	if row.Next() {
+		row.Scan(&p.ID)
+	}
 	return &p, nil
 }
 func (r *productRepo) Get(id int) (*Product, error) {
-	for _, product := range r.productList {
-		if product.ID == id {
-			return product, nil
-		}
+	var product Product
+	err := r.db.Get(&product, `SELECT * FROM products WHERE id = $1 LIMIT 1`, id)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
 	}
-
-	return nil, nil
+	return &product, nil
 }
+
 func (r *productRepo) List() ([]*Product, error) {
-	return r.productList, nil
+	var products []*Product
+	err := r.db.Select(&products, `SELECT * FROM products`)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return products, nil
 }
 func (r *productRepo) Delete(id int) error {
-	var tempList []*Product
-	for _, p := range r.productList {
-		if p.ID != id {
-			tempList = append(tempList, p)
-
-		}
-	}
-	r.productList = tempList
-
-	return nil
+	_, err := r.db.Exec(`DELETE FROM products WHERE id = $1`, id)
+	fmt.Println(err)
+	return err
 }
+
 func (r *productRepo) Update(product Product) (*Product, error) {
-	for idx, p := range r.productList {
-		if p.ID == product.ID {
-			r.productList[idx] = &product
-			return r.productList[idx], nil
-		}
+	query := `UPDATE products SET title = :title, description = :description, price = :price, image_url = :image_url, updated_at = NOW() WHERE id = :id`
+	_, err := r.db.NamedExec(query, &product)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
 	}
-	return nil, nil
-}
-
-func generateInitialProducts(r *productRepo) {
-	prod1 := &Product{
-		ID:          1,
-		Title:       "Apple",
-		Description: "this is apple phone",
-		Price:       2300,
-		ImgUrl:      "dasfdjfl",
-	}
-	r.productList = append(r.productList, prod1)
+	return &product, nil
 }
